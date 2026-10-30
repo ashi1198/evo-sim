@@ -1,15 +1,16 @@
 #pragma once
 #include <vector>
 #include <random>
-#include <algorithm>
+#include <algorithm> // std::min, std::max, std::clamp
 #include <cstdint>
 #include "terrain.h"
 #include "creature.h"
+#include <cstdlib> // std::abs
 
 const float FOOD_ENERGY = 20.0f;
 const float MAX_ENERGY = 100.0f;
 const int START_CREATURES = 50;
-
+const int MATE_RANGE = 2; // tiles: how close a male must be to mate
 class Simulation
 {
 public:
@@ -97,7 +98,11 @@ public:
         food[i] -= eaten;
         c.energy = std::min(MAX_ENERGY, c.energy + eaten * FOOD_ENERGY);
     }
-
+    int wrapDist(int a, int b) const
+    {
+        int d = std::abs(a - b);
+        return std::min(d, 100 - d); // shortest way around the edge
+    }
     void moveCreature(Creature &c)
     {
         std::uniform_real_distribution<float> chance(0.0f, 1.0f);
@@ -148,7 +153,7 @@ public:
 
     void reproduce()
     {
-        // collect ready males first
+        // ready males, by index into creatures
         std::vector<int> males;
         for (int i = 0; i < (int)creatures.size(); i++)
         {
@@ -162,14 +167,27 @@ public:
         for (int i = 0; i < (int)creatures.size(); i++)
         {
             Creature &f = creatures[i];
-            if (f.sex != 'f' || f.energy < f.reproThreshold || males.empty())
+            if (f.sex != 'f' || f.energy < f.reproThreshold)
                 continue;
 
-            // pick a random ready male, and remove him so he mates once per tick
-            std::uniform_int_distribution<int> pick(0, (int)males.size() - 1);
-            int k = pick(rng);
-            Creature &m = creatures[males[k]];
-            males.erase(males.begin() + k);
+            // find the closest ready male within MATE_RANGE
+            int best = -1;
+            int bestDist = MATE_RANGE + 1;
+            for (int k = 0; k < (int)males.size(); k++)
+            {
+                const Creature &m = creatures[males[k]];
+                int d = std::max(wrapDist(f.x, m.x), wrapDist(f.y, m.y));
+                if (d <= MATE_RANGE && d < bestDist)
+                {
+                    bestDist = d;
+                    best = k;
+                }
+            }
+            if (best == -1)
+                continue; // no partner close enough
+
+            Creature &m = creatures[males[best]];
+            males.erase(males.begin() + best); // each male mates once per tick
 
             // both parents give 25% of their energy
             float fGive = f.energy * 0.25f;
@@ -183,7 +201,7 @@ public:
             child.energy = fGive + mGive;
             child.sex = (coin(rng) < 0.5f) ? 'f' : 'm';
 
-            // inherit the mutation rate first, since other traits use it
+            // mutation rate first, since the other traits use it
             child.mutationRate = inheritTrait(f.mutationRate, m.mutationRate, 0.001f, 0.5f, 0.01f);
             child.moveChance = inheritTrait(f.moveChance, m.moveChance, 0.0f, 1.0f, child.mutationRate);
             child.reproThreshold = inheritTrait(f.reproThreshold, m.reproThreshold, 20.0f, 100.0f, child.mutationRate);
