@@ -2,6 +2,7 @@
 #include "simulation.h"
 #include "terrain.h"
 #include "logger.h"
+#include "graph.h"
 #include <ctime>
 #include <string>
 #include <filesystem>
@@ -26,7 +27,9 @@ int main()
     std::filesystem::create_directories("runs"); // makes the folder if it's missing
     DataLogger logger(makeRunFileName(seed), seed);
     bool finished = false;
-    while (!WindowShouldClose() && !finished)
+    std::vector<float> popHistory; // population sampled every 10 ticks
+
+    while (!WindowShouldClose())
     {
         if (IsKeyPressed(KEY_SPACE))
         {
@@ -37,18 +40,16 @@ int main()
         {
             accumulator += GetFrameTime(); // add the real time this frame took
             while (accumulator >= TIMESTEP)
-            { // enough time for one or more ticks?
+            {
                 sim.update();
                 if (sim.stepCount % 10 == 0)
                 {
                     logger.record(sim.stepCount, sim.creatures, sim.totalFood());
+                    popHistory.push_back((float)sim.creatures.size());
+                    if (popHistory.size() > 300)
+                        popHistory.erase(popHistory.begin()); // keep only the newest 300 samples
                 }
-                if (sim.stepCount >= 1200)
-                {
-                    finished = true;
-                    break; // stop the run
-                }
-                accumulator -= TIMESTEP; // use up one tick's worth of time
+                accumulator -= TIMESTEP;
             }
         }
 
@@ -75,6 +76,9 @@ int main()
         }
         DrawText(TextFormat("Steps: %d", sim.stepCount), 620, 10, 20, WHITE);
         DrawText(TextFormat("Pop: %d", (int)sim.creatures.size()), 620, 40, 20, WHITE);
+        DrawText("Population", 620, 100, 16, WHITE);
+        drawGraph(popHistory, 620, 120, 160, 100, GREEN);
+        DrawText(TextFormat("n=%d", (int)popHistory.size()), 620, 230, 16, WHITE);
         if (paused)
         {
 
