@@ -7,7 +7,7 @@ int main()
     SetTargetFPS(60);
     unsigned int seed = 12345; // fixed seed for
     Terrain terrain(seed);     // create a terrain with a fixed seed
-    terrain.smooth(4);         // 4 passes: more passes = bigger blobs
+    terrain.smooth(3);         // 4 passes: more passes = bigger blobs
     Simulation sim;
     const float TIMESTEP = 1.0f / 60.0f; // one simulation tick = 1/60 second
     float accumulator = 0.0f;            // real time not yet turned into ticks

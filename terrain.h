@@ -15,9 +15,9 @@ public:
         for (std::uint8_t &tile : tiles)
         {
             int r = roll(rng);
-            if (r < 70)
+            if (r < 50)
                 tile = 0; // grass
-            else if (r < 90)
+            else if (r < 80)
                 tile = 1; // dirt
             else
                 tile = 2; // water
