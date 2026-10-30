@@ -8,7 +8,7 @@ class DataLogger
 public:
     std::ofstream file;
 
-    DataLogger(const char *path, unsigned int seed) : file(path)
+    DataLogger(const std::string &path, unsigned int seed) : file(path)
     {
         file << "# seed=" << seed << "\n";
         file << "step,population,avg_move_chance,avg_mutation_rate,avg_energy,food_total\n";

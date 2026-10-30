@@ -2,7 +2,16 @@
 #include "simulation.h"
 #include "terrain.h"
 #include "logger.h"
-
+#include <ctime>
+#include <string>
+#include <filesystem>
+std::string makeRunFileName(unsigned int seed)
+{
+    std::time_t now = std::time(nullptr);
+    char stamp[32];
+    std::strftime(stamp, sizeof(stamp), "%Y%m%d_%H%M%S", std::localtime(&now));
+    return "runs/run_" + std::to_string(seed) + "_" + stamp + ".csv";
+}
 int main()
 {
     InitWindow(800, 600, "Evo Sim");
@@ -14,7 +23,8 @@ int main()
     const float TIMESTEP = 1.0f / 60.0f; // one simulation tick = 1/60 second
     float accumulator = 0.0f;            // real time not yet turned into ticks
     bool paused = false;
-    DataLogger logger("run_data.csv", seed);
+    std::filesystem::create_directories("runs"); // makes the folder if it's missing
+    DataLogger logger(makeRunFileName(seed), seed);
     bool finished = false;
     while (!WindowShouldClose() && !finished)
     {
@@ -64,7 +74,7 @@ int main()
             DrawCircle(c.x * 6 + 3, c.y * 6 + 3, 3, RED);
         }
         DrawText(TextFormat("Steps: %d", sim.stepCount), 620, 10, 20, WHITE);
-        DrawText(TextFormat("Energy: %.1f", sim.creatures[0].energy), 620, 40, 20, WHITE);
+        DrawText(TextFormat("Pop: %d", (int)sim.creatures.size()), 620, 40, 20, WHITE);
         if (paused)
         {
 
