@@ -5,10 +5,10 @@ int main()
 {
     InitWindow(800, 600, "Evo Sim");
     SetTargetFPS(60);
-    unsigned int seed = 12345; // fixed seed for
-    Terrain terrain(seed);     // create a terrain with a fixed seed
-    terrain.smooth(3);         // 4 passes: more passes = bigger blobs
-    Simulation sim;
+    unsigned int seed = 12345;           // fixed seed for
+    Terrain terrain(seed);               // create a terrain with a fixed seed
+    terrain.smooth(3);                   // 4 passes: more passes = bigger blobs
+    Simulation sim(terrain, seed);       // create a simulation with the same seed
     const float TIMESTEP = 1.0f / 60.0f; // one simulation tick = 1/60 second
     float accumulator = 0.0f;            // real time not yet turned into ticks
     bool paused = false;
@@ -32,7 +32,6 @@ int main()
 
         BeginDrawing();
         ClearBackground(BLACK);
-        DrawText(TextFormat("Steps: %d", sim.stepCount), 620, 10, 20, WHITE);
         for (int i = 0; i < 100; i++)
         {
             for (int j = 0; j < 100; j++)
@@ -48,9 +47,15 @@ int main()
                 DrawRectangle(j * 6, i * 6, 6, 6, color);
             }
         }
+        for (const Creature &c : sim.creatures)
+        {
+            DrawCircle(c.x * 6 + 3, c.y * 6 + 3, 3, RED);
+        }
+        DrawText(TextFormat("Steps: %d", sim.stepCount), 620, 10, 20, WHITE);
+        DrawText(TextFormat("Energy: %.1f", sim.creatures[0].energy), 620, 40, 20, WHITE);
         if (paused)
         {
-            DrawText(TextFormat("Steps: %d", sim.stepCount), 620, 10, 20, WHITE);
+
             DrawText("PAUSED", 620, 40, 20, YELLOW);
         }
 
