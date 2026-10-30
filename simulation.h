@@ -52,7 +52,13 @@ public:
         }
         creatures.push_back(creature);
     }
-
+    float totalFood() const
+    {
+        float sum = 0.0f;
+        for (float f : food)
+            sum += f;
+        return sum;
+    }
     float moveCost(uint8_t tile) const
     {
         if (tile == 1)

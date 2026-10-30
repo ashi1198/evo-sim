@@ -1,6 +1,8 @@
 #include "raylib.h"
 #include "simulation.h"
 #include "terrain.h"
+#include "logger.h"
+
 int main()
 {
     InitWindow(800, 600, "Evo Sim");
@@ -12,8 +14,9 @@ int main()
     const float TIMESTEP = 1.0f / 60.0f; // one simulation tick = 1/60 second
     float accumulator = 0.0f;            // real time not yet turned into ticks
     bool paused = false;
-
-    while (!WindowShouldClose())
+    DataLogger logger("run_data.csv", seed);
+    bool finished = false;
+    while (!WindowShouldClose() && !finished)
     {
         if (IsKeyPressed(KEY_SPACE))
         {
@@ -26,6 +29,15 @@ int main()
             while (accumulator >= TIMESTEP)
             { // enough time for one or more ticks?
                 sim.update();
+                if (sim.stepCount % 10 == 0)
+                {
+                    logger.record(sim.stepCount, sim.creatures, sim.totalFood());
+                }
+                if (sim.stepCount >= 1200)
+                {
+                    finished = true;
+                    break; // stop the run
+                }
                 accumulator -= TIMESTEP; // use up one tick's worth of time
             }
         }
