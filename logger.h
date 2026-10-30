@@ -1,16 +1,25 @@
 #pragma once
 #include <fstream>
+#include <string>
 #include <vector>
 #include "creature.h"
+#include "params.h"
 
 class DataLogger
 {
 public:
     std::ofstream file;
 
-    DataLogger(const std::string &path, unsigned int seed) : file(path)
+    DataLogger(const std::string &path, unsigned int seed, const Params &p)
+        : file(path)
     {
-        file << "# seed=" << seed << "\n";
+        file << "# seed=" << seed
+             << " foodRegrow=" << p.foodRegrow
+             << " foodEnergy=" << p.foodEnergy
+             << " moveCostGrass=" << p.moveCostGrass
+             << " moveCostWater=" << p.moveCostWater
+             << " reproThreshold=" << p.reproThreshold
+             << " maxAge=" << p.maxAge << "\n";
         file << "step,population,avg_move_chance,avg_mutation_rate,avg_energy,food_total\n";
     }
 
@@ -30,6 +39,6 @@ public:
 
         file << step << "," << n << "," << avgMove << "," << avgMut << ","
              << avgEnergy << "," << foodTotal << "\n";
-        file.flush(); // save each row right away, in case the program stops
+        file.flush();
     }
 };
