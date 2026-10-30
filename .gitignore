@@ -1,0 +1,5 @@
+cheatsheat.txt
+build/
+*.exe
+*.o
+*.obj
