@@ -82,6 +82,7 @@ public:
                 food[i] = std::min(1.0f, food[i] + 0.002f);
         }
     }
+
     float totalFood() const
     {
         float sum = 0.0f;
@@ -211,18 +212,30 @@ public:
 
         creatures.insert(creatures.end(), newborns.begin(), newborns.end());
     }
+    void removeDead()
+    {
 
+        creatures.erase(
+            std::remove_if(creatures.begin(), creatures.end(),
+                           [](const Creature &c)
+                           { return !c.isAlive(); }),
+            creatures.end());
+    }
     void update()
     {
         regrowFood();
 
         for (Creature &c : creatures)
         {
+
+            c.age += 1;
+
             moveCreature(c);
             eat(c);
         }
 
         reproduce();
+        removeDead();
         stepCount++;
     }
 };
