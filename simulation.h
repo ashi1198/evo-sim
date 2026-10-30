@@ -2,6 +2,7 @@
 #include "terrain.h"
 #include "creature.h"
 #include <random>
+#include <cmath>
 class Simulation
 {
 public:
@@ -16,7 +17,17 @@ public:
         Creature creature;
         creature.x = 50;
         creature.y = 50;
+        for (int tries = 0; tries < 10000 && terrain->getTile(creature.x, creature.y) == 2; tries++)
+        {
+            creature.x = (creature.x + 1) % 100; // wrap, so it stays 0 to 99
+        }
         creatures.push_back(creature);
+    }
+    float moveCost(uint8_t tile)
+    {
+        if (tile == 1)
+            return 0.5f; // water
+        return 0.2f;     // grass
     }
     void update()
     {
@@ -35,12 +46,16 @@ public:
             { // not rock
                 creatures[0].x = (newposx % 100 + 100) % 100;
                 creatures[0].y = (newposy % 100 + 100) % 100;
-                creatures[0].energy -= 0.2f; // moving costs energy
+                creatures[0].energy -= moveCost(terrain->getTile(newposx, newposy));
+            }
+            else
+            {
+                creatures[0].energy -= 0.1f; // bumping into rock costs energy
             }
         }
         else
         {
-            creatures[0].energy -= 0.05f; // resting gains energy
+            creatures[0].energy -= 0.05f; // resting loose energy
         }
 
         stepCount++;
