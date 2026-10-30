@@ -4,9 +4,8 @@
 #include <cstdint>
 class Terrain
 {
-    std::vector<std::uint8_t> tiles;
-
 public:
+    std::vector<std::uint8_t> tiles;
     Terrain(unsigned int seed)
     {
         std::mt19937 rng(seed);
