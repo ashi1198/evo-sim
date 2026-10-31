@@ -181,16 +181,48 @@ public:
         }
         return found;
     }
+    int wrapStep(int from, int to) const
+    {
+        int d = (to - from + 100) % 100; // steps going forward, 0 to 99
+        if (d == 0)
+            return 0;
+        return (d <= 50) ? 1 : -1; // shorter way around the wrap
+    }
 
+    bool findNearestMate(const Creature &c, int &outX, int &outY) const
+    {
+        int range = (int)c.visibility;
+        int bestDist = range + 1;
+        bool found = false;
+        for (const Creature &o : creatures)
+        {
+            if (&o == &c)
+                continue; // not itself
+            if (o.sex == c.sex)
+                continue; // opposite sex only
+            if (o.energy < o.reproThreshold)
+                continue; // must be ready too
+            int d = std::max(wrapDist(c.x, o.x), wrapDist(c.y, o.y));
+            if (d <= range && d < bestDist)
+            {
+                bestDist = d;
+                outX = o.x;
+                outY = o.y;
+                found = true;
+            }
+        }
+        return found;
+    }
     void moveCreature(Creature &c)
     {
         int targetX = 0, targetY = 0;
-        int dx = 0, dy = 0;
         bool seeking = false;
 
         bool needsFood = c.energy < c.hungerThreshold;
         bool needsWater = c.hydration < c.thirstThreshold;
+        bool readyToMate = c.energy >= c.reproThreshold;
 
+        // priority: food and water first, then mates
         if (needsFood && needsWater)
         {
             float foodGap = c.hungerThreshold - c.energy;
@@ -208,18 +240,23 @@ public:
         {
             seeking = findNearestWater(c, targetX, targetY);
         }
+        else if (readyToMate)
+        {
+            seeking = findNearestMate(c, targetX, targetY);
+        }
+
+        bool inNeed = needsFood || needsWater;
 
         std::uniform_real_distribution<float> chance(0.0f, 1.0f);
         std::uniform_int_distribution<int> dir(-1, 1);
+        int dx = 0, dy = 0;
 
         if (seeking)
         {
-            dx = (targetX > c.x) ? 1 : (targetX < c.x) ? -1
-                                                       : 0;
-            dy = (targetY > c.y) ? 1 : (targetY < c.y) ? -1
-                                                       : 0;
+            dx = wrapStep(c.x, targetX);
+            dy = wrapStep(c.y, targetY);
         }
-        else if (chance(rng) < c.moveChance)
+        else if (inNeed || chance(rng) < c.moveChance)
         {
             dx = dir(rng);
             dy = dir(rng);
@@ -230,25 +267,37 @@ public:
             return;
         }
 
-        int steps = std::max(1, (int)c.speed);
-        for (int s = 0; s < steps; s++)
+        // already on the target tile (e.g. a mate on the same spot): no movement to pay for
+        if (dx == 0 && dy == 0)
         {
+            c.energy -= 0.05f;
+            return;
+        }
+
+        c.moveProgress += c.speed; // this tick's movement budget
+        while (c.moveProgress >= 1.0f)
+        {
+            c.moveProgress -= 1.0f; // spend one tile's worth of progress
+
             int newX = c.x + dx;
             int newY = c.y + dy;
             int tile = terrain->getTile(newX, newY);
             if (tile == 2)
             {
-                c.energy -= 0.1f;
-                break; // blocked by rock
+                c.energy -= 0.1f; // blocked by rock: stop for this tick
+                c.moveProgress = 0.0f;
+                break;
             }
             c.x = (newX % 100 + 100) % 100;
             c.y = (newY % 100 + 100) % 100;
             c.energy -= speedCost(c.speed) * (tile == 1 ? 2.5f : 1.0f);
             if (c.energy <= 0.0f)
+            {
+                c.moveProgress = 0.0f;
                 break;
+            }
         }
     }
-
     int wrapDist(int a, int b) const
     {
         int d = std::abs(a - b);
@@ -275,6 +324,7 @@ public:
 
     void reproduce()
     {
+
         std::vector<int> males;
         for (int i = 0; i < (int)creatures.size(); i++)
         {
@@ -323,11 +373,10 @@ public:
             child.mutationRate = inheritTrait(f.mutationRate, m.mutationRate, 0.001f, 0.5f, 0.01f);
             child.moveChance = inheritTrait(f.moveChance, m.moveChance, 0.0f, 1.0f, child.mutationRate);
             child.reproThreshold = inheritTrait(f.reproThreshold, m.reproThreshold, 20.0f, 100.0f, child.mutationRate);
-            child.speed = inheritTrait(f.speed, m.speed, 0.5f, 5.0f, child.mutationRate);
+            child.speed = inheritTrait(f.speed, m.speed, 0.5f, 5.0f, child.mutationRate); // reproduce()
             child.visibility = inheritTrait(f.visibility, m.visibility, 1.0f, 15.0f, child.mutationRate);
             child.hungerThreshold = inheritTrait(f.hungerThreshold, m.hungerThreshold, 20.0f, 95.0f, child.mutationRate);
             child.thirstThreshold = inheritTrait(f.thirstThreshold, m.thirstThreshold, 20.0f, 95.0f, child.mutationRate);
-
             newborns.push_back(child);
         }
 
