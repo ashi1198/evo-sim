@@ -372,7 +372,7 @@ public:
 
             child.mutationRate = inheritTrait(f.mutationRate, m.mutationRate, 0.001f, 0.5f, 0.01f);
             child.moveChance = inheritTrait(f.moveChance, m.moveChance, 0.0f, 1.0f, child.mutationRate);
-            child.reproThreshold = inheritTrait(f.reproThreshold, m.reproThreshold, 20.0f, 100.0f, child.mutationRate);
+            child.reproThreshold = p.reproThreshold;                                      // always 80 (from params.h), no inheritance);
             child.speed = inheritTrait(f.speed, m.speed, 0.5f, 5.0f, child.mutationRate); // reproduce()
             child.visibility = inheritTrait(f.visibility, m.visibility, 1.0f, 15.0f, child.mutationRate);
             child.hungerThreshold = inheritTrait(f.hungerThreshold, m.hungerThreshold, 20.0f, 95.0f, child.mutationRate);

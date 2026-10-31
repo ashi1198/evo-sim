@@ -21,7 +21,7 @@ int main()
     InitWindow(800, 600, "Evo Sim");
     SetTargetFPS(60);
 
-    unsigned int seed = 12345;
+    unsigned int seed = 54321;
     Terrain terrain(seed);
     terrain.smooth(3);
 
