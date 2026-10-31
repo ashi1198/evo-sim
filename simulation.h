@@ -4,11 +4,14 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
+#include <cmath>
 #include "terrain.h"
 #include "creature.h"
 #include "params.h"
 
 const float MAX_ENERGY = 100.0f;
+const float MAX_HYDRATION = 100.0f;
+const float HYDRATION_DRAIN = 0.03f; // per tick
 const int START_CREATURES = 50;
 const int MATE_RANGE = 2; // tiles: how close a male must be to mate
 
@@ -50,9 +53,17 @@ public:
         // spawn the starting creatures on non-rock tiles
         std::uniform_int_distribution<int> pos(0, 99);
         std::uniform_real_distribution<float> chance(0.0f, 1.0f);
+        std::uniform_real_distribution<float> speedRoll(0.5f, 2.0f);
+        std::uniform_real_distribution<float> visRoll(2.0f, 8.0f);
+        std::uniform_real_distribution<float> hungerRoll(40.0f, 90.0f);
+        std::uniform_real_distribution<float> thirstRoll(40.0f, 90.0f);
         for (int n = 0; n < START_CREATURES; n++)
         {
             Creature c;
+            c.speed = speedRoll(rng);
+            c.visibility = visRoll(rng);
+            c.hungerThreshold = hungerRoll(rng);
+            c.thirstThreshold = thirstRoll(rng);
             int x = pos(rng);
             int y = pos(rng);
             int tries = 0;
@@ -69,13 +80,6 @@ public:
             c.sex = (chance(rng) < 0.5f) ? 'f' : 'm';
             creatures.push_back(c);
         }
-    }
-
-    float moveCost(uint8_t tile) const
-    {
-        if (tile == 1)
-            return p.moveCostWater; // water
-        return p.moveCostGrass;     // grass
     }
 
     void regrowFood()
@@ -105,32 +109,143 @@ public:
         c.energy = std::min(MAX_ENERGY, c.energy + eaten * p.foodEnergy);
     }
 
+    void drink(Creature &c)
+    {
+        uint8_t tile = terrain->getTile(c.x, c.y);
+        if (tile == 1) // standing on water
+        {
+            c.hydration = std::min(MAX_HYDRATION, c.hydration + 10.0f);
+        }
+    }
+
+    float speedCost(float speed) const
+    {
+        return p.moveCostGrass * std::log2(1.0f + speed);
+    }
+
+    bool findNearestFood(const Creature &c, int &outX, int &outY) const
+    {
+        int range = (int)c.visibility;
+        int bestDist = range + 1;
+        bool found = false;
+        for (int dy = -range; dy <= range; dy++)
+        {
+            for (int dx = -range; dx <= range; dx++)
+            {
+                if (dx == 0 && dy == 0)
+                    continue;
+                int x = (c.x + dx + 100) % 100;
+                int y = (c.y + dy + 100) % 100;
+                int i = terrain->index(x, y);
+                if (food[i] > 0.0f)
+                {
+                    int d = std::max(std::abs(dx), std::abs(dy));
+                    if (d <= range && d < bestDist)
+                    {
+                        bestDist = d;
+                        outX = x;
+                        outY = y;
+                        found = true;
+                    }
+                }
+            }
+        }
+        return found;
+    }
+
+    bool findNearestWater(const Creature &c, int &outX, int &outY) const
+    {
+        int range = (int)c.visibility;
+        int bestDist = range + 1;
+        bool found = false;
+        for (int dy = -range; dy <= range; dy++)
+        {
+            for (int dx = -range; dx <= range; dx++)
+            {
+                if (dx == 0 && dy == 0)
+                    continue;
+                int x = (c.x + dx + 100) % 100;
+                int y = (c.y + dy + 100) % 100;
+                if (terrain->getTile(x, y) == 1)
+                {
+                    int d = std::max(std::abs(dx), std::abs(dy));
+                    if (d <= range && d < bestDist)
+                    {
+                        bestDist = d;
+                        outX = x;
+                        outY = y;
+                        found = true;
+                    }
+                }
+            }
+        }
+        return found;
+    }
+
     void moveCreature(Creature &c)
     {
+        int targetX = 0, targetY = 0;
+        int dx = 0, dy = 0;
+        bool seeking = false;
+
+        bool needsFood = c.energy < c.hungerThreshold;
+        bool needsWater = c.hydration < c.thirstThreshold;
+
+        if (needsFood && needsWater)
+        {
+            float foodGap = c.hungerThreshold - c.energy;
+            float waterGap = c.thirstThreshold - c.hydration;
+            if (foodGap >= waterGap)
+                seeking = findNearestFood(c, targetX, targetY);
+            else
+                seeking = findNearestWater(c, targetX, targetY);
+        }
+        else if (needsFood)
+        {
+            seeking = findNearestFood(c, targetX, targetY);
+        }
+        else if (needsWater)
+        {
+            seeking = findNearestWater(c, targetX, targetY);
+        }
+
         std::uniform_real_distribution<float> chance(0.0f, 1.0f);
         std::uniform_int_distribution<int> dir(-1, 1);
 
-        if (chance(rng) < c.moveChance)
+        if (seeking)
         {
-            int dx = dir(rng);
-            int dy = dir(rng);
-            int newX = c.x + dx;
-            int newY = c.y + dy;
-            int tile = terrain->getTile(newX, newY);
-            if (tile != 2)
-            {
-                c.x = (newX % 100 + 100) % 100;
-                c.y = (newY % 100 + 100) % 100;
-                c.energy -= moveCost(tile);
-            }
-            else
-            {
-                c.energy -= 0.1f; // bumped into rock
-            }
+            dx = (targetX > c.x) ? 1 : (targetX < c.x) ? -1
+                                                       : 0;
+            dy = (targetY > c.y) ? 1 : (targetY < c.y) ? -1
+                                                       : 0;
+        }
+        else if (chance(rng) < c.moveChance)
+        {
+            dx = dir(rng);
+            dy = dir(rng);
         }
         else
         {
             c.energy -= 0.05f; // resting
+            return;
+        }
+
+        int steps = std::max(1, (int)c.speed);
+        for (int s = 0; s < steps; s++)
+        {
+            int newX = c.x + dx;
+            int newY = c.y + dy;
+            int tile = terrain->getTile(newX, newY);
+            if (tile == 2)
+            {
+                c.energy -= 0.1f;
+                break; // blocked by rock
+            }
+            c.x = (newX % 100 + 100) % 100;
+            c.y = (newY % 100 + 100) % 100;
+            c.energy -= speedCost(c.speed) * (tile == 1 ? 2.5f : 1.0f);
+            if (c.energy <= 0.0f)
+                break;
         }
     }
 
@@ -208,6 +323,10 @@ public:
             child.mutationRate = inheritTrait(f.mutationRate, m.mutationRate, 0.001f, 0.5f, 0.01f);
             child.moveChance = inheritTrait(f.moveChance, m.moveChance, 0.0f, 1.0f, child.mutationRate);
             child.reproThreshold = inheritTrait(f.reproThreshold, m.reproThreshold, 20.0f, 100.0f, child.mutationRate);
+            child.speed = inheritTrait(f.speed, m.speed, 0.5f, 5.0f, child.mutationRate);
+            child.visibility = inheritTrait(f.visibility, m.visibility, 1.0f, 15.0f, child.mutationRate);
+            child.hungerThreshold = inheritTrait(f.hungerThreshold, m.hungerThreshold, 20.0f, 95.0f, child.mutationRate);
+            child.thirstThreshold = inheritTrait(f.thirstThreshold, m.thirstThreshold, 20.0f, 95.0f, child.mutationRate);
 
             newborns.push_back(child);
         }
@@ -232,8 +351,10 @@ public:
         for (Creature &c : creatures)
         {
             c.age += 1;
+            c.hydration = std::max(0.0f, c.hydration - HYDRATION_DRAIN);
             moveCreature(c);
             eat(c);
+            drink(c);
         }
 
         reproduce();
