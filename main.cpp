@@ -7,6 +7,7 @@
 #include <ctime>
 #include <string>
 #include <filesystem>
+#include "creature_art.h"
 
 std::string makeRunFileName(unsigned int seed)
 {
@@ -71,7 +72,7 @@ int main()
             while (accumulator >= TIMESTEP)
             {
                 sim.update();
-                if (sim.stepCount % 10 == 0)
+                if (sim.stepCount % 50 == 0)
                 {
                     logger.record(sim.stepCount, sim.creatures, sim.totalFood());
                     popHistory.push_back((float)sim.creatures.size());
@@ -102,9 +103,7 @@ int main()
         }
 
         for (const Creature &c : sim.creatures)
-        {
-            DrawCircle(c.x * 6 + 3, c.y * 6 + 3, 3, RED);
-        }
+            drawCreature(c, 6); // TILE is your current tile size, 6
 
         DrawText(TextFormat("Steps: %d", sim.stepCount), 620, 10, 20, WHITE);
         DrawText(TextFormat("Pop: %d", (int)sim.creatures.size()), 620, 40, 20, WHITE);

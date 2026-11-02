@@ -20,20 +20,20 @@ public:
              << " moveCostWater=" << p.moveCostWater
              << " reproThreshold=" << p.reproThreshold
              << " maxAge=" << p.maxAge << "\n";
-        file << "step,population,avg_move_chance,avg_mutation_rate,avg_energy,avg_hydration,"
+        file << "step,population,avg_mutation_rate,avg_energy,avg_hydration,"
                 "avg_speed,avg_visibility,avg_repro_threshold,avg_hunger_threshold,avg_thirst_threshold,food_total\n";
     }
 
     void record(int step, const std::vector<Creature> &creatures, float foodTotal)
     {
         int n = static_cast<int>(creatures.size());
-        float sumMove = 0.0f, sumMut = 0.0f, sumEnergy = 0.0f, sumHydration = 0.0f;
+        float sumMut = 0.0f, sumEnergy = 0.0f, sumHydration = 0.0f;
         float sumSpeed = 0.0f, sumVisibility = 0.0f;
         float sumRepro = 0.0f, sumHunger = 0.0f, sumThirst = 0.0f;
 
         for (const Creature &c : creatures)
         {
-            sumMove += c.moveChance;
+
             sumMut += c.mutationRate;
             sumEnergy += c.energy;
             sumHydration += c.hydration;
@@ -47,7 +47,7 @@ public:
         auto avg = [n](float sum)
         { return n ? sum / n : 0.0f; };
 
-        file << step << "," << n << "," << avg(sumMove) << "," << avg(sumMut) << ","
+        file << step << "," << n << "," << avg(sumMut) << ","
              << avg(sumEnergy) << "," << avg(sumHydration) << "," << avg(sumSpeed) << ","
              << avg(sumVisibility) << "," << avg(sumRepro) << "," << avg(sumHunger) << ","
              << avg(sumThirst) << "," << foodTotal << "\n";

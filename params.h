@@ -2,10 +2,11 @@
 
 struct Params
 {
-    float foodRegrow = 0.002f;    // food gained per tick on food spots
-    float foodEnergy = 20.0f;     // energy per unit of food eaten
-    float moveCostGrass = 0.2f;   // energy per move on grass
-    float moveCostWater = 0.5f;   // energy per move on water
-    float reproThreshold = 80.0f; // default energy needed to reproduce
-    int maxAge = 600;             // ticks
+    float foodRegrow = 0.002f;
+    float foodEnergy = 20.0f;
+    float moveCostGrass = 0.2f;
+    float moveCostWater = 0.5f;
+    float reproThreshold = 80.0f;
+    int maxAge = 600;
+    float brainMutation = 0.03f; // size of random change to brain weights at birth
 };
